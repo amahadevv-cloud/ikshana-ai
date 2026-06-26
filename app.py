@@ -1,4 +1,4 @@
-import streamlit as st
+ import streamlit as st
 import pandas as pd
 import re
 import time
@@ -17,7 +17,6 @@ def stream_gemini_ai(prompt_text):
     """Streams responses from Google Gemini AI Engine in real time to eliminate lag"""
     try:
         if GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE" or not GEMINI_API_KEY:
-            # Simulated streaming generator function for local mode
             def simulation_generator():
                 sim_text = "AI Engine Mode: [Simulation] Please provide a valid Gemini API Key to unlock real-time streaming analysis."
                 for word in sim_text.split(" "):
@@ -26,8 +25,6 @@ def stream_gemini_ai(prompt_text):
             return simulation_generator()
         
         client = genai.Client(api_key=GEMINI_API_KEY)
-        
-        # Generator function to catch chunks as they arrive from the server
         def response_generator():
             response = client.models.generate_content_stream(
                 model='gemini-2.5-flash',
@@ -36,14 +33,12 @@ def stream_gemini_ai(prompt_text):
             for chunk in response:
                 if chunk.text:
                     yield chunk.text
-                    
         return response_generator()
     except Exception as e:
         def error_generator():
             yield f"AI Connection Error: {str(e)}"
         return error_generator()
 
-# --- HIGH SPEED NATIVE CACHING PIPELINE ---
 @st.cache_data
 def clean_symbols_fast(text):
     """Pre-processes text symbols instantly using cached compiled regex"""
@@ -59,7 +54,6 @@ def clean_symbols_fast(text):
 @st.cache_data
 def process_dataframe_metrics(file_contents, is_csv=True):
     """Caches heavy dataframe computing transformations so page re-renders are instant"""
-    # Create internal dataframes from cached binary string transfers
     import io
     if is_csv:
         df = pd.read_csv(io.BytesIO(file_contents))
@@ -74,20 +68,88 @@ def process_dataframe_metrics(file_contents, is_csv=True):
     unique_rows = total_rows - duplicate_count
     duplicate_percentage = round((duplicate_count / total_rows) * 100, 1)
     
-    # Process native data cleaning fast
     df['Cleaned_Review'] = df[review_column].apply(clean_symbols_fast)
     df_cleaned = df.drop_duplicates(subset=[review_column])
-    
-    # Pre-generate sample string block
     sample_reviews_string = " | ".join(df_cleaned['Cleaned_Review'].astype(str).tail(10).tolist())
     
     return total_rows, unique_rows, duplicate_count, duplicate_percentage, df_cleaned, sample_reviews_string
 
 # -------------------------------------------------------------
-# APP NAVIGATION STATE
+# GLOBAL INITIALIZATION & USER DATABASE CONFIGURATION
 # -------------------------------------------------------------
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "user_db" not in st.session_state:
+    # A simple runtime user database initialized with one default test account
+    st.session_state.user_db = {"test@ikshana.com": "password123"}
 if "role" not in st.session_state:
     st.session_state.role = "welcome"
+if "current_user" not in st.session_state:
+    st.session_state.current_user = None
+
+# -------------------------------------------------------------
+# 🔐 AUTHENTICATION GATE (RUNS BEFORE EVERYTHING ELSE)
+# -------------------------------------------------------------
+if not st.session_state.authenticated:
+    st.title("🎯 Welcome to Ikshana AI")
+    st.subheader("Please sign in or create an account to access the platform")
+    st.write("---")
+    
+    auth_mode = st.radio("Choose Action", ["Secure Login", "Create New Account"], horizontal=True)
+    
+    # Form structures wrap fields beautifully to avoid multi-click structural re-runs
+    with st.form("auth_form", clear_on_submit=False):
+        email = st.text_input("Email Address Address", placeholder="name@example.com").strip().lower()
+        password = st.text_input("Account Password Password", type="password", placeholder="••••••••")
+        
+        if auth_mode == "Secure Login":
+            submit_btn = st.form_submit_button("Sign In to Gateway", use_container_width=True, type="primary")
+            if submit_btn:
+                if email in st.session_state.user_db and st.session_state.user_db[email] == password:
+                    st.session_state.authenticated = True
+                    st.session_state.current_user = email
+                    st.success(f"Welcome back, {email}!")
+                    time.sleep(0.5)
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid email address address or password credentials. Please try again.")
+                    
+        elif auth_mode == "Create New Account":
+            confirm_password = st.text_input("Confirm Account Password Password", type="password", placeholder="••••••••")
+            submit_btn = st.form_submit_button("Register New Profile", use_container_width=True, type="primary")
+            
+            if submit_btn:
+                if not email or not password:
+                    st.error("❌ Email and password strings cannot be left completely empty.")
+                elif "@" not in email or "." not in email:
+                    st.error("❌ Please provide a structurally valid email syntax formatting profile.")
+                elif password != confirm_password:
+                    st.error("❌ Password mismatch error. Double-check your matching inputs.")
+                elif email in st.session_state.user_db:
+                    st.error("❌ This email registry profile already exists inside our record logs.")
+                else:
+                    # Append profile registry mapping to memory state
+                    st.session_state.user_db[email] = password
+                    st.session_state.authenticated = True
+                    st.session_state.current_user = email
+                    st.success("🎉 Account profile successfully deployed to system clusters!")
+                    time.sleep(0.5)
+                    st.rerun()
+                    
+    st.stop() # Force execution halt so unauthorized sessions see absolutely nothing else
+
+# -------------------------------------------------------------
+# 🌟 APPS ACCESS GATEWAY (ACCESSIBLE ONLY WHEN LOGGED IN)
+# -------------------------------------------------------------
+
+# Quick utility header for global session actions
+col_user, col_logout = st.columns([8, 2])
+col_user.markdown(f"👤 Active Session: **{st.session_state.current_user}**")
+if col_logout.button("🚪 Logout From System", use_container_width=True):
+    st.session_state.authenticated = False
+    st.session_state.current_user = None
+    st.session_state.role = "welcome"
+    st.rerun()
 
 # -------------------------------------------------------------
 # SCREEN 1: WELCOME SYSTEM GATEWAY
@@ -135,13 +197,10 @@ elif st.session_state.role == "seller":
     uploaded_file = st.file_uploader("Drop e-commerce tracking registers here (.csv or .xlsx)", type=["csv", "xlsx"])
     
     if uploaded_file is not None:
-        # Read file as bytes directly to support cache layer functions
         file_bytes = uploaded_file.getvalue()
         is_csv = uploaded_file.name.endswith('.csv')
         
-        # Execute super fast calculation from cached system data
         total_rows, unique_rows, duplicate_count, duplicate_percentage, df_cleaned, sample_reviews = process_dataframe_metrics(file_bytes, is_csv=is_csv)
-        
         st.write(f"📊 Extracted **{total_rows} total rows** from your file.")
         
         if total_rows < 50:
@@ -155,7 +214,6 @@ elif st.session_state.role == "seller":
             col_metric2.metric("Identical Repetitions Found", f"{duplicate_count}")
             col_metric3.metric("Data Redundancy Rate", f"{duplicate_percentage}%")
             
-            # Render charts with cached calculations instantly
             st.write("---")
             st.markdown("### 📊 Live Data Integrity Statistics")
             chart_data = pd.DataFrame({
@@ -164,7 +222,6 @@ elif st.session_state.role == "seller":
             }).set_index("Record Type")
             st.bar_chart(chart_data)
             
-            # --- REAL-TIME AI RESPONSE STREAMING ---
             st.write("---")
             st.markdown("### 🧠 Deep AI Linguistic Translation & Suggestions")
             
@@ -179,11 +236,9 @@ elif st.session_state.role == "seller":
             """
             
             st.markdown("#### Live AI Deep Audit Output (Streaming):")
-            # st.write_stream instantly prints words as they arrive, removing screen freezing
             st.write_stream(stream_gemini_ai(advanced_ai_prompt))
             st.balloons()
                 
-            # --- EXPORT DATA UTILITY ---
             st.write("---")
             st.markdown("### 📥 Cleaned Registry Export Utilities")
             csv_buffer = df_cleaned.to_csv(index=False).encode('utf-8')
