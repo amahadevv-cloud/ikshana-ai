@@ -46,7 +46,7 @@ if st.session_state.role == "welcome":
     
     with col1:
         st.info("### 🏪 Business Sellers")
-        st.write("Upload spreadsheets, analyze sentiment, validate metrics, and unlock premium tier tools.")
+        st.write("Upload spreadsheets, analyze sentiment, validate metrics, and unlock evaluation tools.")
         if st.button("Enter Seller Gateway", use_container_width=True):
             st.session_state.role = "seller"
             st.rerun()
@@ -66,7 +66,7 @@ if st.session_state.role == "welcome":
             st.rerun()
 
 # -------------------------------------------------------------
-# SCREEN 2: SELLER ENGINE (BULK UPLOAD & PAYWALL LOGIC)
+# SCREEN 2: SELLER ENGINE (FREE & AUTOMATED ANALYSIS)
 # -------------------------------------------------------------
 elif st.session_state.role == "seller":
     st.title("🏪 Seller Control Center")
@@ -96,21 +96,18 @@ elif st.session_state.role == "seller":
             st.success("✅ Document Accepted! Row threshold validation passed.")
             st.session_state.uploaded_data = df
             
-            # Premium Paywall Simulation
             st.write("---")
-            st.markdown("### 🔒 Unlock Deep AI Sentiment Analytics")
-            st.info("Your dataset is ready. Unlock deep charts, automated replies, and competitive audit indexes.")
-            if st.button("Subscribe via Samsung Pay — $14.99/mo", type="primary"):
-                st.balloons()
-                st.success("Premium Active Tier Initialized!")
+            st.markdown("### 🧠 Instant AI Sentiment Analytics")
+            
+            # Real AI execution over the file data immediately triggers here
+            sample_reviews = " ".join(df.iloc[:, 0].astype(str).tail(5).tolist())
+            with st.spinner("AI analyzing your uploaded inventory feedback logs..."):
+                ai_analysis_prompt = f"Analyze the customer sentiment of these reviews and summarize the core quality flaws: {sample_reviews}"
+                results = call_gemini_ai(ai_analysis_prompt)
                 
-                # Real AI execution over the file data
-                sample_reviews = " ".join(df.iloc[:, 0].astype(str).tail(5).tolist())
-                with st.spinner("AI analyzing your uploaded inventory feedback..."):
-                    ai_analysis_prompt = f"Analyze the customer sentiment of these reviews and summarize the core quality flaws: {sample_reviews}"
-                    results = call_gemini_ai(ai_analysis_prompt)
-                    st.markdown("#### 🧠 Live AI Engine Feedback Summary:")
-                    st.write(results)
+                st.balloons() # Decorative celebration for successful data tracking
+                st.markdown("#### Live AI Engine Feedback Summary:")
+                st.write(results)
 
 # -------------------------------------------------------------
 # SCREEN 3: SHOPPER SPACE (CROSS-REFERENCE AI & CO-PILOT CHAT)
